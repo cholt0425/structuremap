@@ -145,7 +145,9 @@ namespace StructureMap.TypeRules
                 yield return TPluggedType.GetTypeInfo().BaseType;
             }
 
-            if (TPluggedType.GetTypeInfo().BaseType == typeof(object)) yield break;
+            if (TPluggedType.GetTypeInfo().BaseType == typeof(object)
+                || TPluggedType == typeof(object)
+                ) yield break;
 
             foreach (var interfaceType in rawFindInterfacesThatCloses(TPluggedType.GetTypeInfo().BaseType, templateType))
             {
@@ -253,7 +255,7 @@ namespace StructureMap.TypeRules
         {
             if (type == null) return false;
 
-            return type.GetTypeInfo().IsPrimitive || IsString(type) || type.GetTypeInfo().IsEnum;
+            return type.GetTypeInfo().IsPrimitive || IsString(type) || type.GetTypeInfo().IsEnum || IsNullable(type);
         }
 
         public static bool IsInterfaceOrAbstract(this Type type)

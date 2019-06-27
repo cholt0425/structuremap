@@ -89,8 +89,11 @@ namespace StructureMap.Pipeline
         {
             if (argumentType == null) return null;
 
-            var argument = _dependencies.LastOrDefault(x => x.Name == name && x.Type == argumentType);
-            if (argument == null && EnumerableInstance.IsEnumerable(argumentType))
+			var argument = _dependencies.LastOrDefault(x => x.Name == name &&
+														(x.Type == argumentType ||
+														isMatchOnNullableInnerType(argumentType, x.Type) ||
+														(x.Type == null && argumentType.IsInstanceOfType(x.Dependency))));
+			if (argument == null && EnumerableInstance.IsEnumerable(argumentType))
             {
                 var elementType = EnumerableInstance.DetermineElementType(argumentType);
                 argument = _dependencies
@@ -98,6 +101,11 @@ namespace StructureMap.Pipeline
             }
 
             return argument;
+        }
+
+        private bool isMatchOnNullableInnerType(Type argumentType, Type dependencyType)
+        {
+            return argumentType.IsNullable() && dependencyType == argumentType.GetInnerTypeFromNullable();
         }
 
         /// <summary>
@@ -206,6 +214,16 @@ namespace StructureMap.Pipeline
                                 type.GetFullName()), e);
                     }
                 }
+            }
+
+            // Making sure you can override the default
+            if (name.IsNotEmpty())
+            {
+                _dependencies.RemoveAll(x => x.Name == name);
+            }
+            else if (type != null)
+            {
+                _dependencies.RemoveAll(x => x.Type == type && x.Name.IsEmpty());
             }
 
             _dependencies.Add(new Argument

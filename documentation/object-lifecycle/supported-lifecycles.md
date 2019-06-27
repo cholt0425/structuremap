@@ -13,8 +13,8 @@ Out of the box, the core StructureMap assembly supports these lifecycles:
 ## Transient
 
 Older versions of StructureMap referred to _Transient_ as _PerRequest_, which might be a more accurate reflection of how this lifecycle behaves but 
-causes some confusion with ASP.Net HTTP scoping.  The easiest way to think of _Transient_ is that a single object instance will be created for each top level
-call to `Container.GetInstance()` (or any other object resolution method on the `IContainer` interface). _Transient_ objects resolved from a nested container, _Transient's_ are scoped to the lifecycle
+causes some confusion with ASP.NET HTTP scoping.  The easiest way to think of _Transient_ is that a single object instance will be created for each top level
+call to `Container.GetInstance()` (or any other object resolution method on the `IContainer` interface). _Transient_ objects resolved from a nested container, _Transients_ are scoped to the lifecycle
 of the nested container itself. See <[linkto:the-container/nested-containers]> for more information.
 
 **StructureMap's behavior for transient objects that implement `IDisposable` changed in 4.0 to introduce an "opt-in" tracking mode.** Please see <[linkto:the-container/disposing]> for the details.
@@ -68,25 +68,3 @@ The acceptance test for `ContainerScoped` is shown below:
 The ThreadLocalStorage based lifecycle is seldom used, but the easiest example of using it and explanation is the integration test:
 <[sample:thread-local-storage]>
 
-
-
-## Legacy ASP.Net Lifecycles
-
-<div class="alert alert-info" role="alert">The StructureMap team strongly recommends against using the old ASP.Net lifecycles.  <b>Most</b> modern web frameworks in .Net will use a Nested Container per request to accomplish the same scoping in a better way.</div>
-
-<Nuget name="StructureMap.Web" />
-
-In addition, the StructureMap.Web package adds the legacy ASP.Net related lifecycles for:
-
-* HttpContext
-* HttpSession (requires objects to be `Serializable`, not recommended but still present for legacy code
-* Hybrid -- uses ThreadLocalStorage in the absence of an active HttpContext
-* HybridSession
-
-<[sample:AspNet-Lifecycles]>
-
-If you do use any of the HttpContext lifecycles, make sure you also do:
-
-<[sample:clean-up-http-context]> 
-
-at the end of your HTTP request.

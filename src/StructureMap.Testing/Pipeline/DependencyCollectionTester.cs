@@ -63,24 +63,6 @@ namespace StructureMap.Testing.Pipeline
         }
 
         [Fact]
-        public void use_most_specific_criteria_if_possible()
-        {
-            var collection = new DependencyCollection();
-            collection.Add("foo", typeof(IGateway), gateway1);
-            collection.Add("bar", typeof(IGateway), gateway2);
-            collection.Add("bar", typeof(IService), service1);
-
-            collection.FindByTypeOrName(typeof(IGateway), "foo")
-                .ShouldBeTheSameAs(gateway1);
-
-            collection.FindByTypeOrName(typeof(IGateway), "bar")
-                .ShouldBeTheSameAs(gateway2);
-
-            collection.FindByTypeOrName(typeof(IService), "bar")
-                .ShouldBeTheSameAs(service1);
-        }
-
-        [Fact]
         public void can_override_and_last_one_in_wins()
         {
             var collection = new DependencyCollection();
@@ -89,6 +71,20 @@ namespace StructureMap.Testing.Pipeline
 
             collection.FindByTypeOrName(typeof(IGateway), "foo")
                 .ShouldBeTheSameAs(gateway2);
+        }
+
+        [Fact]
+        public void nullable_type_found_by_underlying_type()
+        {
+            var collection = new DependencyCollection();
+            collection.Add("foo", 1);
+            collection.Add("bar", 1.1m);
+
+            collection.FindByTypeAndName(typeof(int?), "foo")
+                .ShouldBe(1);
+
+            collection.FindByTypeAndName(typeof(int?), "bar")
+                .ShouldBeNull();
         }
     }
 }

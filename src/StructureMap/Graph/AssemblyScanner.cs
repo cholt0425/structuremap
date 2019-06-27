@@ -187,7 +187,7 @@ namespace StructureMap.Graph
         {
             return _assemblies.Any();
         }
-
+        
 
         public void TheCallingAssembly()
         {
@@ -205,15 +205,22 @@ namespace StructureMap.Graph
 
         public void AssembliesFromApplicationBaseDirectory()
         {
-            AssembliesFromApplicationBaseDirectory(a => true);
+            AssembliesFromApplicationBaseDirectory((Assembly a) => true);
         }
 
         public void AssembliesFromApplicationBaseDirectory(Func<Assembly, bool> assemblyFilter)
         {
-            var assemblies = AssemblyFinder.FindAssemblies(assemblyFilter, txt =>
+            var assemblies = AssemblyFinder.FindAssemblies(assemblyFilter, includeExeFiles: false);
+
+            foreach (var assembly in assemblies)
             {
-                Console.WriteLine("StructureMap could not load assembly from file " + txt);
-            }, includeExeFiles: false);
+                Assembly(assembly);
+            }
+        }
+
+        public void AssembliesFromApplicationBaseDirectory(Func<string, bool> pathFilter)
+        {
+            var assemblies = AssemblyFinder.FindAssemblies(null, includeExeFiles: false, pathFilter: pathFilter);
 
             foreach (var assembly in assemblies)
             {
@@ -224,15 +231,24 @@ namespace StructureMap.Graph
         /// <summary>
         /// Choosing option will direct StructureMap to *also* scan files ending in '*.exe'
         /// </summary>
-        /// <param name="scanner"></param>
         /// <param name="assemblyFilter"></param>
-        /// <param name="includeExeFiles"></param>
         public void AssembliesAndExecutablesFromApplicationBaseDirectory(Func<Assembly, bool> assemblyFilter = null)
         {
-            var assemblies = AssemblyFinder.FindAssemblies(assemblyFilter, txt =>
+            var assemblies = AssemblyFinder.FindAssemblies(assemblyFilter, includeExeFiles: true);
+
+            foreach (var assembly in assemblies)
             {
-                Console.WriteLine("StructureMap could not load assembly from file " + txt);
-            }, includeExeFiles: true);
+                Assembly(assembly);
+            }
+        }
+
+        /// <summary>
+        /// Choosing option will direct StructureMap to *also* scan files ending in '*.exe'
+        /// </summary>
+        /// <param name="pathFilter"></param>
+        public void AssembliesAndExecutablesFromApplicationBaseDirectory(Func<string, bool> pathFilter = null)
+        {
+            var assemblies = AssemblyFinder.FindAssemblies(null, includeExeFiles: true, pathFilter: pathFilter);
 
             foreach (var assembly in assemblies)
             {
@@ -296,7 +312,37 @@ namespace StructureMap.Graph
             }
         }
 
-#if NET45
+        public void AssembliesAndExecutablesFromPath(string path,
+            Func<string, bool> pathFilter)
+        {
+            var assemblies = AssemblyFinder.FindAssemblies(path, txt =>
+            {
+                Console.WriteLine("StructureMap could not load assembly from file " + txt);
+            }, includeExeFiles: true, pathFilter: pathFilter);
+
+
+            foreach (var assembly in assemblies)
+            {
+                Assembly(assembly);
+            }
+        }
+
+        public void AssembliesFromPath(string path,
+            Func<string, bool> pathFilter)
+        {
+            var assemblies = AssemblyFinder.FindAssemblies(path, txt =>
+            {
+                Console.WriteLine("StructureMap could not load assembly from file " + txt);
+            }, includeExeFiles: false, pathFilter: pathFilter);
+
+
+            foreach (var assembly in assemblies)
+            {
+                Assembly(assembly);
+            }
+        }
+
+#if NET45 || NETSTANDARD2_0
         private static Assembly findTheCallingAssembly()
         {
             var trace = new StackTrace(false);
@@ -332,8 +378,8 @@ namespace StructureMap.Graph
 
                 try 
                 {
-
                     assembly = System.Reflection.Assembly.Load(new AssemblyName(possibility));
+
                     break;
                 }
                 catch (Exception e)
@@ -344,7 +390,6 @@ namespace StructureMap.Graph
 
             return assembly;
         }
-
 #endif
     }
 }

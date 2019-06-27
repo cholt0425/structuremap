@@ -2,7 +2,7 @@ require 'json'
 
 COMPILE_TARGET = ENV['config'].nil? ? "debug" : ENV['config']
 RESULTS_DIR = "results"
-BUILD_VERSION = '4.4.2'
+BUILD_VERSION = '4.7.0'
 
 DOC_LOCATION = ENV['docpath'].nil? ? "z:/code/structuremap.github.com" : ENV['docpath']
 
@@ -15,12 +15,6 @@ task :ci => [:default, :pack]
 
 task :default => [:test]
 
-desc "Do stupid Nuget stuff for idiotic .Net builds"
-task :csharp do
-	sh "nuget.exe install Microsoft.CSharp -Version 4.0.0"
-	FileUtils.cp "Microsoft.CSharp.4.0.0/Microsoft.CSharp.4.0.0.nupkg", "C:/Users/fubuadmin/.nuget/packages"
-end
-
 desc "Prepares the working directory for a new build"
 task :clean do
 	#TODO: do any other tasks required to clean/prepare the working directory
@@ -31,7 +25,7 @@ end
 
 desc "Update the version information for the build"
 task :version do
-  asm_version = build_number
+  asm_version = BUILD_VERSION
   
   begin
     commit = `git log -1 --pretty=format:%H`
@@ -44,10 +38,10 @@ task :version do
   options = {
 	:description => 'IoC Container for .Net',
 	:product_name => 'StructureMap',
-	:copyright => 'Copyright 2004-2016 Jeremy D. Miller, Joshua Flanagan, Frank Quednau, Tim Kellogg, et al. All rights reserved.',
+	:copyright => 'Copyright 2004-2017 Jeremy D. Miller, Joshua Flanagan, Frank Quednau, Tim Kellogg, et al. All rights reserved.',
 	:trademark => commit,
 	:version => asm_version,
-	:file_version => build_number,
+	:file_version => BUILD_VERSION,
 	:informational_version => asm_version
 	
   }
@@ -82,20 +76,16 @@ desc 'Run the unit tests'
 task :test => [:compile] do
 	Dir.mkdir RESULTS_DIR
 
-	sh "dotnet test src/StructureMap.Testing"
-	
-
-	sh "dotnet test src/StructureMap.AutoFactory.Testing"
-	sh "dotnet test src/StructureMap.DynamicInterception.Testing"
+	sh "dotnet test src/StructureMap.Testing/StructureMap.Testing.csproj"
+	sh "dotnet test src/StructureMap.AutoFactory.Testing/StructureMap.AutoFactory.Testing.csproj"
+	sh "dotnet test src/StructureMap.DynamicInterception.Testing/StructureMap.DynamicInterception.Testing.csproj"
 end
-
-
 
 desc 'Build Nuspec packages'
 task :pack => [:compile] do
-	sh "dotnet pack src/StructureMap -o artifacts --configuration Release --version-suffix #{build_revision}"
-	sh "dotnet pack src/StructureMap.AutoFactory -o artifacts --configuration Release --version-suffix #{build_revision}"
-	sh "dotnet pack src/StructureMap.DynamicInterception -o artifacts --configuration Release --version-suffix #{build_revision}"
+	sh "dotnet pack src/StructureMap -o artifacts --configuration Release"
+	sh "dotnet pack src/StructureMap.AutoFactory -o artifacts --configuration Release"
+	sh "dotnet pack src/StructureMap.DynamicInterception -o artifacts --configuration Release"
 end
 
 desc "Launches VS to the StructureMap solution file"

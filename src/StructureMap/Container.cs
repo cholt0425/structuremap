@@ -1,5 +1,3 @@
-using System.IO;
-using StructureMap.Configuration.DSL;
 using StructureMap.Diagnostics;
 using StructureMap.Graph;
 using StructureMap.Graph.Scanning;
@@ -8,8 +6,9 @@ using StructureMap.Query;
 using StructureMap.TypeRules;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -807,25 +806,32 @@ namespace StructureMap
             {
                 _pipelineGraph.Configure(configure);
 
-                // Correct the Singleton lifecycle for child containers
-                if (Role == ContainerRole.ProfileOrChild)
-                {
-                    var lifecycle = new ChildContainerSingletonLifecycle(_pipelineGraph.ContainerCache);
-
-                    var singletons = _pipelineGraph.Instances.ImmediateInstances()
-                        .Where(x => x.Lifecycle is SingletonLifecycle);
-
-                    singletons
-                        .Each(x => x.SetLifecycleTo(lifecycle));
-
-                    _pipelineGraph.Instances.ImmediatePluginGraph.Families.ToArray().Where(x => x.Lifecycle is SingletonLifecycle)
-                        .Each(x => x.SetLifecycleTo(lifecycle));
-                }
+                CorrectSingletonLifecycleForChild(_pipelineGraph);
 
                 if (Role == ContainerRole.Nested)
                 {
                     _pipelineGraph.ValidateValidNestedScoping();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Correct the Singleton lifecycle for child containers
+        /// </summary>
+        internal static void CorrectSingletonLifecycleForChild(IPipelineGraph pipelineGraph)
+        {
+            if (pipelineGraph.Role == ContainerRole.ProfileOrChild)
+            {
+                var lifecycle = new ChildContainerSingletonLifecycle(pipelineGraph.ContainerCache);
+
+                var singletons = pipelineGraph.Instances.ImmediateInstances()
+                    .Where(x => x.Lifecycle is SingletonLifecycle);
+
+                singletons
+                    .Each(x => x.SetLifecycleTo(lifecycle));
+
+                pipelineGraph.Instances.ImmediatePluginGraph.Families.ToArray().Where(x => x.Lifecycle is SingletonLifecycle)
+                    .Each(x => x.SetLifecycleTo(lifecycle));
             }
         }
 
@@ -843,9 +849,12 @@ namespace StructureMap
         {
             ArgumentChecker.ThrowIfNullOrEmptyString("profileName", profileName);
             assertNotDisposed();
+            lock (_syncLock)
+            {
+                var pipeline = _pipelineGraph.Profiles.For(profileName, _syncLock);
 
-            var pipeline = _pipelineGraph.Profiles.For(profileName);
-            return new Container(pipeline);
+                return new Container(pipeline);
+            }
         }
 
         /// <summary>
@@ -910,7 +919,6 @@ namespace StructureMap
             var writer = new StringWriter();
             writer.WriteLine("All Scanners");
             writer.WriteLine("================================================================");
-
 
             scanners.Each(scanner =>
             {
@@ -1066,7 +1074,7 @@ namespace StructureMap
         {
             assertNotDisposed();
             var pipeline = _pipelineGraph.ToNestedGraph(arguments);
-            
+
             return GetNestedContainer(pipeline);
 
             throw new NotImplementedException();
@@ -1086,7 +1094,7 @@ namespace StructureMap
             ArgumentChecker.ThrowIfNullOrEmptyString("profileName", profileName);
             assertNotDisposed();
 
-            var pipeline = _pipelineGraph.Profiles.For(profileName).ToNestedGraph();
+            var pipeline = _pipelineGraph.Profiles.For(profileName, _syncLock).ToNestedGraph();
             return GetNestedContainer(pipeline);
         }
 
@@ -1159,7 +1167,7 @@ namespace StructureMap
         {
             if (defaultInstance == null && pluginType.IsConcrete())
             {
-                defaultInstance = new ConfiguredInstance(pluginType) {Name = requestedName};
+                defaultInstance = new ConfiguredInstance(pluginType) { Name = requestedName };
             }
 
             var basicInstance = defaultInstance as IOverridableInstance;
@@ -1178,7 +1186,7 @@ namespace StructureMap
                 RootType = instance.ReturnedType
             };
 
-            return session.FindObject(pluginType, instance);
+            return session.BuildWithExplicitArgs(pluginType, instance);
         }
 
         /// <summary>
